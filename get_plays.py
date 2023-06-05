@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 debug = False
 print_rank = True
+YOUR_BGG_NAME = 'Your_BGG_Username'
 
 def extract_game_data(xml_str, debug=False):
     root = ET.fromstring(xml_str)
@@ -63,7 +64,7 @@ mindate = sys.argv[1]
 maxdate = sys.argv[2]
 
 # API request URL
-url = f'https://boardgamegeek.com/xmlapi2/plays?username=pkufahl&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
+url = f'https://boardgamegeek.com/xmlapi2/plays?username=YOUR_BGG_NAME&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
 # Make the API request
 response = requests.get(url)
