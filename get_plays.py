@@ -64,7 +64,7 @@ mindate = sys.argv[1]
 maxdate = sys.argv[2]
 
 # API request URL
-url = f'https://boardgamegeek.com/xmlapi2/plays?username=YOUR_BGG_NAME&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
+url = f'https://boardgamegeek.com/xmlapi2/plays?username={YOUR_BGG_NAME}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
 # Make the API request
 response = requests.get(url)
@@ -106,7 +106,7 @@ if debug:
     for game_id, play_count in plays_per_game.items():
         print(f"Game ID: {game_id}, Plays: {play_count}")
 
-url2 = 'https://boardgamegeek.com/xmlapi2/collection?username=YOUR_BGG_NAME&id=' + game_ids_str + '&stats=1'
+url2 = 'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
 # Make the API request
 if debug:
     print(url2 + ' ...') 
