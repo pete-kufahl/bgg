@@ -106,7 +106,7 @@ if debug:
     for game_id, play_count in plays_per_game.items():
         print(f"Game ID: {game_id}, Plays: {play_count}")
 
-url2 = 'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
+url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
 # Make the API request
 if debug:
     print(url2 + ' ...') 
