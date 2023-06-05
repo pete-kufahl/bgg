@@ -121,7 +121,7 @@ if response.status_code != 200:
     print(f'url request failed with code {response.status_code}')
     exit(1)
 
-game_bgg_data = extract_game_data(response.text, debug=True)
+game_bgg_data = extract_game_data(response.text, debug=False)
 for game in game_bgg_data:
     game['play_count'] = plays_per_game[game['game_id']]
 game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
