@@ -57,7 +57,7 @@ def map_rating(rating, spaces=1):
 
 # Retrieve command line arguments
 if len(sys.argv) < 3:
-    print("Please provide mindate and maxdate parameters.")
+    print("Please provide mindate (yyyy-mm-dd) and maxdate (yyyy-mm-dd) parameters, and (optionally) your BGG username as the third parameter.")
     sys.exit(1)
 
 mindate = sys.argv[1]
@@ -147,5 +147,5 @@ for game in game_bgg_data:
             rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
         print(f'[c]{rank_str} [/c]{rating_str} {name}{plays_str} {total_str}')
     else:
-        print(f'{rating_str} {name} x{plays} {total_str}')
+        print(f'{rating_str} {name}{plays_str} {total_str}')
 
