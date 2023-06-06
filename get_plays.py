@@ -63,6 +63,9 @@ if len(sys.argv) < 3:
 mindate = sys.argv[1]
 maxdate = sys.argv[2]
 
+if len(sys.argv) == 4:
+    YOUR_BGG_NAME = sys.argv[3]
+
 # API request URL
 url = f'https://boardgamegeek.com/xmlapi2/plays?username={YOUR_BGG_NAME}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
@@ -86,7 +89,6 @@ root = ET.fromstring(xml_str)
 # Extract game IDs and number of plays
 games = root.findall('.//play/item')
 plays_per_game = {}
-game_bgg_data = {}
 
 for game in games:
     game_id = game.attrib['objectid']
@@ -132,6 +134,7 @@ for game in game_bgg_data:
     name = game['name']
     rank = game['rank']
     plays = game['play_count']
+    plays_str = f' x{plays}' if int(plays) > 1 else ''
     total = game['numplays']
     if int(plays) == int(total):
         total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
@@ -142,7 +145,7 @@ for game in game_bgg_data:
             rank_str = '[size=8]' + 'unranked' + ' [/size]'
         else:
             rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
-        print(f'[c]{rank_str} [/c]{rating_str} {name} x{plays} {total_str}')
+        print(f'[c]{rank_str} [/c]{rating_str} {name}{plays_str} {total_str}')
     else:
         print(f'{rating_str} {name} x{plays} {total_str}')
 
