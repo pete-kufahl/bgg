@@ -41,7 +41,7 @@ def extract_game_data(xml_str, debug=False):
 
 def map_rating(rating, spaces=1):
     spacer = ' ' * int(spaces)
-    k = int(rating)
+    k = int(rating) if rating.isdigit() else -1
     return {
         10: '[BGCOLOR=#00CC00] [b]' + str(rating) + '[/b] [/BGCOLOR]',
         9: '[BGCOLOR=#33CC99] [b]' + str(rating) + '[/b] [/BGCOLOR]',
