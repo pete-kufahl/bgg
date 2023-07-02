@@ -2,6 +2,7 @@ import sys
 import requests
 import time
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 
 debug = False
 print_rank = True
@@ -88,17 +89,15 @@ if __name__ == "__main__":
     root = ET.fromstring(xml_str)
 
     # Extract game IDs and number of plays
-    games = root.findall('.//play/item')
-    plays_per_game = {}
+    gameplays = root.findall('.//play')
+    plays_per_game = defaultdict(int)
 
-    for game in games:
+    for gameplay in gameplays:
+        game = gameplay.find('item')
+        assert game
         game_id = game.attrib['objectid']
-        play_count = game.attrib.get('quantity', 1)
-        play_count = int(play_count)
-        if game_id in plays_per_game:
-            plays_per_game[game_id] += play_count
-        else:
-            plays_per_game[game_id] = play_count
+        play_count = gameplay.attrib.get('quantity', 1)
+        plays_per_game[game_id] += int(play_count)
 
     # look up the game rank and name for each id
     game_ids = [int(k) for k in plays_per_game.keys()]
