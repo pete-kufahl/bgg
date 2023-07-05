@@ -1,4 +1,5 @@
 import sys
+from typing import List
 import requests
 import time
 import xml.etree.ElementTree as ET
@@ -49,7 +50,7 @@ def extract_game_data(xml_str, debug=False):
             return []
     return game_data
 
-def map_rating(rating, spaces=1):
+def map_rating(rating, spaces=1) -> str:
     spacer = ' ' * int(spaces)
     k = int(rating) if rating.isdigit() else -1
     return {
@@ -65,18 +66,8 @@ def map_rating(rating, spaces=1):
         1: '[BGCOLOR=#FF0000] [b]' + str(rating) + '[/b] [/BGCOLOR]'
     }.get(k, '[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]') + spacer
 
-@click.command()
-@click.option('-u', '--username', help='BGG username', required=True)
-@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
-@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
-def main(username, start_date, end_date):
-
-    # Convert start_date and end_date to datetime objects if needed
-    if isinstance(start_date, str):
-        start_date = date_parser.parse(start_date).date()
-    if isinstance(end_date, str):
-        end_date = date_parser.parse(end_date).date()
-
+def get_game_data(username, start_date, end_date) -> List:
+    """ fetches the relevant games played data and returns a list of records """
     mindate = start_date
     maxdate = end_date
 
@@ -148,6 +139,22 @@ def main(username, start_date, end_date):
     for game in game_bgg_data:
         game['play_count'] = plays_per_game[game['game_id']]
     game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
+    return game_bgg_data
+
+
+@click.command()
+@click.option('-u', '--username', help='BGG username', required=True)
+@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
+@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
+def main(username, start_date, end_date):
+
+    # Convert start_date and end_date to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = date_parser.parse(start_date).date()
+    if isinstance(end_date, str):
+        end_date = date_parser.parse(end_date).date()
+
+    game_bgg_data = get_game_data(username, start_date, end_date)
 
     for game in game_bgg_data:
         rating = game['rating_value']
@@ -169,6 +176,7 @@ def main(username, start_date, end_date):
             print(f'[c]{rank_str} [/c]{rating_str} {name}{plays_str} {total_str}')
         else:
             print(f'{rating_str} {name}{plays_str} {total_str}')
+
 
 if __name__ == '__main__':
     main()
