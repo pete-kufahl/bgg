@@ -20,27 +20,29 @@ def extract_game_data(xml_str, debug=False):
         if debug:
             i += 1
             print(f'game {i}: {game_id} ...')
-        if not game.find('name'):
-            print(f'no name attribute found for game-id {game_id}, despite the API request\'s 200 return! Try running again?')
-            continue
-        name = game.find('name').text
-        rank = game.find('.//rank[@type="subtype"]').attrib['value']
-        numplays = game.find('numplays').text
-        rating_value = game.find('stats/rating').attrib['value']
-        average_rating = game.find('stats/rating/average').attrib['value']
-        bayes_average_rating = game.find('stats/rating/bayesaverage').attrib['value']
+        try:
+            name = game.find('name').text
+            rank = game.find('.//rank[@type="subtype"]').attrib['value']
+            numplays = game.find('numplays').text
+            rating_value = game.find('stats/rating').attrib['value']
+            average_rating = game.find('stats/rating/average').attrib['value']
+            bayes_average_rating = game.find('stats/rating/bayesaverage').attrib['value']
 
-        game_info = {
-            'game_id': game_id,
-            'name': name,
-            'rank': rank,
-            'numplays': numplays,
-            'rating_value': rating_value,
-            'average_rating': average_rating,
-            'bayes_average_rating': bayes_average_rating
-        }
-
-        game_data.append(game_info)
+            game_info = {
+                'game_id': game_id,
+                'name': name,
+                'rank': rank,
+                'numplays': numplays,
+                'rating_value': rating_value,
+                'average_rating': average_rating,
+                'bayes_average_rating': bayes_average_rating
+            }
+            game_data.append(game_info)
+        except AttributeError as ex:
+            print(f'missing attribute for game-id {game_id}, despite the API request\'s 200 return! Try running again?')
+        except Exception as other_ex:
+            print(other_ex)
+            return []
     return game_data
 
 def map_rating(rating, spaces=1):
@@ -112,21 +114,30 @@ if __name__ == "__main__":
             print(f"Game ID: {game_id}, Plays: {play_count}")
 
     url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
-    # Make the API request
-    if debug:
-        print(url2 + ' ...') 
-    response = requests.get(url2)
+    tries_left = 2
+    game_bgg_data = []
+    while tries_left > 0:
+        tries_left -= 1
+        # Make the API request
+        if debug:
+            print(url2 + ' ...') 
+        response = requests.get(url2)
 
-    while response.status_code == 202:
-        print("Waiting for response...")
-        time.sleep(0.33)
-        response = requests.get(url)
+        while response.status_code == 202:
+            print("Waiting for response...")
+            time.sleep(0.33)
+            response = requests.get(url)
 
-    if response.status_code != 200:
-        print(f'url request failed with code {response.status_code}')
-        exit(1)
+        if response.status_code != 200:
+            print(f'url request failed with code {response.status_code}')
+            exit(1)
 
-    game_bgg_data = extract_game_data(response.text, debug=False)
+        game_bgg_data = extract_game_data(response.text, debug=False)
+        if len(game_bgg_data) > 0:
+            break
+    else:
+        print(f'else of while loop reached! Try in browser: {url2}')
+
     for game in game_bgg_data:
         game['play_count'] = plays_per_game[game['game_id']]
     game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
