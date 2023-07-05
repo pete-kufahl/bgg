@@ -1,12 +1,13 @@
 [tool.poetry]
-name = "bgg"
+name = "python-click"
 version = "0.1.0"
-description = ""
+description = "BGG API command line tool"
 authors = ["Peter Kufahl <pkufahl@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.31.0"
+click = "^8.1.3"
 
 [tool.poetry.dev-dependencies]
 
