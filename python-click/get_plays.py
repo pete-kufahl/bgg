@@ -4,9 +4,13 @@ import time
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
+import click
+from datetime import date, timedelta
+from dateutil import parser as date_parser
+
+
 debug = False
 print_rank = True
-YOUR_BGG_NAME = 'Your_BGG_Username'
 
 def extract_game_data(xml_str, debug=False):
     root = ET.fromstring(xml_str)
@@ -61,20 +65,23 @@ def map_rating(rating, spaces=1):
         1: '[BGCOLOR=#FF0000] [b]' + str(rating) + '[/b] [/BGCOLOR]'
     }.get(k, '[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]') + spacer
 
-if __name__ == "__main__":
-    # Retrieve command line arguments
-    if len(sys.argv) < 3:
-        print("Please provide mindate (yyyy-mm-dd) and maxdate (yyyy-mm-dd) parameters, and (optionally) your BGG username as the third parameter.")
-        sys.exit(1)
+@click.command()
+@click.option('-u', '--username', help='BGG username', required=True)
+@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
+@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
+def main(username, start_date, end_date):
 
-    mindate = sys.argv[1]
-    maxdate = sys.argv[2]
+    # Convert start_date and end_date to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = date_parser.parse(start_date).date()
+    if isinstance(end_date, str):
+        end_date = date_parser.parse(end_date).date()
 
-    if len(sys.argv) == 4:
-        YOUR_BGG_NAME = sys.argv[3]
+    mindate = start_date
+    maxdate = end_date
 
     # API request URL
-    url = f'https://boardgamegeek.com/xmlapi2/plays?username={YOUR_BGG_NAME}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
+    url = f'https://boardgamegeek.com/xmlapi2/plays?username={username}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
     # Make the API request
     response = requests.get(url)
@@ -113,7 +120,7 @@ if __name__ == "__main__":
         for game_id, play_count in plays_per_game.items():
             print(f"Game ID: {game_id}, Plays: {play_count}")
 
-    url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
+    url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={username}&id=' + game_ids_str + '&stats=1'
     tries_left = 2
     game_bgg_data = []
     while tries_left > 0:
@@ -163,3 +170,5 @@ if __name__ == "__main__":
         else:
             print(f'{rating_str} {name}{plays_str} {total_str}')
 
+if __name__ == '__main__':
+    main()
