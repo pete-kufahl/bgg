@@ -1,14 +1,15 @@
 import sys
+from typing import List
 import requests
 import time
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-debug = False
-print_rank = True
-YOUR_BGG_NAME = 'Your_BGG_Username'
+import click
+from datetime import date, timedelta
+from dateutil import parser as date_parser
 
-def extract_game_data(xml_str, debug=False):
+def extract_game_data(xml_str, debug: bool = False):
     root = ET.fromstring(xml_str)
     games = root.findall('.//item')
     i = 0
@@ -45,7 +46,7 @@ def extract_game_data(xml_str, debug=False):
             return []
     return game_data
 
-def map_rating(rating, spaces=1):
+def map_rating(rating, spaces=1) -> str:
     spacer = ' ' * int(spaces)
     k = int(rating) if rating.isdigit() else -1
     return {
@@ -61,26 +62,19 @@ def map_rating(rating, spaces=1):
         1: '[BGCOLOR=#FF0000] [b]' + str(rating) + '[/b] [/BGCOLOR]'
     }.get(k, '[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]') + spacer
 
-if __name__ == "__main__":
-    # Retrieve command line arguments
-    if len(sys.argv) < 3:
-        print("Please provide mindate (yyyy-mm-dd) and maxdate (yyyy-mm-dd) parameters, and (optionally) your BGG username as the third parameter.")
-        sys.exit(1)
-
-    mindate = sys.argv[1]
-    maxdate = sys.argv[2]
-
-    if len(sys.argv) == 4:
-        YOUR_BGG_NAME = sys.argv[3]
+def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
+    """ fetches the relevant games played data and returns a list of records """
+    mindate = start_date
+    maxdate = end_date
 
     # API request URL
-    url = f'https://boardgamegeek.com/xmlapi2/plays?username={YOUR_BGG_NAME}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
+    url = f'https://boardgamegeek.com/xmlapi2/plays?username={username}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
     # Make the API request
     response = requests.get(url)
 
     while response.status_code == 202:
-        print("Waiting for response...")
+        print('Waiting for response...')
         time.sleep(0.33)
         response = requests.get(url)
 
@@ -111,9 +105,9 @@ if __name__ == "__main__":
     # Print the number of plays per game
     if debug:
         for game_id, play_count in plays_per_game.items():
-            print(f"Game ID: {game_id}, Plays: {play_count}")
+            print(f'Game ID: {game_id}, Plays: {play_count}')
 
-    url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={YOUR_BGG_NAME}&id=' + game_ids_str + '&stats=1'
+    url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={username}&id=' + game_ids_str + '&stats=1'
     tries_left = 2
     game_bgg_data = []
     while tries_left > 0:
@@ -124,7 +118,7 @@ if __name__ == "__main__":
         response = requests.get(url2)
 
         while response.status_code == 202:
-            print("Waiting for response...")
+            print('Waiting for response...')
             time.sleep(0.33)
             response = requests.get(url)
 
@@ -132,7 +126,7 @@ if __name__ == "__main__":
             print(f'url request failed with code {response.status_code}')
             exit(1)
 
-        game_bgg_data = extract_game_data(response.text, debug=False)
+        game_bgg_data = extract_game_data(response.text, debug=debug)
         if len(game_bgg_data) > 0:
             break
     else:
@@ -141,25 +135,58 @@ if __name__ == "__main__":
     for game in game_bgg_data:
         game['play_count'] = plays_per_game[game['game_id']]
     game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
+    return game_bgg_data
+
+def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: bool = False):
+    """ converts BGG and games played data into formatted line of text """
+    rating = game['rating_value']
+    rating_str = map_rating(rating, 1)
+    name = game['name']
+    game_id = game['game_id']
+    name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
+    rank = game['rank']
+    plays = game['play_count']
+    plays_str = f' x{plays}' if int(plays) > 1 else ''
+    total = game['numplays']
+    if int(plays) == int(total):
+        total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
+    else:
+        total_str = f'[size=7]({total} so far)[/size]'
+    if print_ranks:
+        if 'Not' in str(rank):
+            rank_str = '[size=8]' + 'unranked' + ' [/size]'
+        else:
+            rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
+        formatted = f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}'
+    else:
+        formatted = f'{rating_str} {name}{plays_str} {total_str}'
+    return formatted
+
+
+@click.command()
+@click.option('-u', '--username', help='BGG username', required=True)
+@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
+@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
+@click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
+@click.option('-r', '--print-ranks', is_flag=True, help='Print BGG ranks')
+@click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
+def main(username, start_date, end_date, print_with_links, print_ranks, debug):
+
+    # Convert start_date and end_date to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = date_parser.parse(start_date).date()
+    if isinstance(end_date, str):
+        end_date = date_parser.parse(end_date).date()
+
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    game_bgg_data = get_game_data(username, start_date_str, end_date_str, debug=debug)
 
     for game in game_bgg_data:
-        rating = game['rating_value']
-        rating_str = map_rating(rating, 1)
-        name = game['name']
-        rank = game['rank']
-        plays = game['play_count']
-        plays_str = f' x{plays}' if int(plays) > 1 else ''
-        total = game['numplays']
-        if int(plays) == int(total):
-            total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
-        else:
-            total_str = f'[size=7]({total} so far)[/size]'
-        if print_rank:
-            if 'Not' in str(rank):
-                rank_str = '[size=8]' + 'unranked' + ' [/size]'
-            else:
-                rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
-            print(f'[c]{rank_str} [/c]{rating_str} {name}{plays_str} {total_str}')
-        else:
-            print(f'{rating_str} {name}{plays_str} {total_str}')
+        formatted = format_line_of_game_info(game, print_with_links, print_ranks)
+        print(formatted)
 
+
+if __name__ == '__main__':
+    main()
