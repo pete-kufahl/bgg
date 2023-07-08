@@ -9,10 +9,6 @@ import click
 from datetime import date, timedelta
 from dateutil import parser as date_parser
 
-
-debug = False
-print_rank = True
-
 def extract_game_data(xml_str, debug: bool = False):
     root = ET.fromstring(xml_str)
     games = root.findall('.//item')
@@ -141,14 +137,40 @@ def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
     game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
     return game_bgg_data
 
+def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: bool = False):
+    """ converts BGG and games played data into formatted line of text """
+    rating = game['rating_value']
+    rating_str = map_rating(rating, 1)
+    name = game['name']
+    game_id = game['game_id']
+    name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
+    rank = game['rank']
+    plays = game['play_count']
+    plays_str = f' x{plays}' if int(plays) > 1 else ''
+    total = game['numplays']
+    if int(plays) == int(total):
+        total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
+    else:
+        total_str = f'[size=7]({total} so far)[/size]'
+    if print_ranks:
+        if 'Not' in str(rank):
+            rank_str = '[size=8]' + 'unranked' + ' [/size]'
+        else:
+            rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
+        formatted = f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}'
+    else:
+        formatted = f'{rating_str} {name}{plays_str} {total_str}'
+    return formatted
+
 
 @click.command()
 @click.option('-u', '--username', help='BGG username', required=True)
 @click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
 @click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
 @click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
+@click.option('-r', '--print-ranks', is_flag=True, help='Print BGG ranks')
 @click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
-def main(username, start_date, end_date, print_with_links, debug):
+def main(username, start_date, end_date, print_with_links, print_ranks, debug):
 
     # Convert start_date and end_date to datetime objects if needed
     if isinstance(start_date, str):
@@ -162,27 +184,8 @@ def main(username, start_date, end_date, print_with_links, debug):
     game_bgg_data = get_game_data(username, start_date_str, end_date_str, debug=debug)
 
     for game in game_bgg_data:
-        rating = game['rating_value']
-        rating_str = map_rating(rating, 1)
-        name = game['name']
-        game_id = game['game_id']
-        name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
-        rank = game['rank']
-        plays = game['play_count']
-        plays_str = f' x{plays}' if int(plays) > 1 else ''
-        total = game['numplays']
-        if int(plays) == int(total):
-            total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
-        else:
-            total_str = f'[size=7]({total} so far)[/size]'
-        if print_rank:
-            if 'Not' in str(rank):
-                rank_str = '[size=8]' + 'unranked' + ' [/size]'
-            else:
-                rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
-            print(f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}')
-        else:
-            print(f'{rating_str} {name}{plays_str} {total_str}')
+        formatted = format_line_of_game_info(game, print_with_links, print_ranks)
+        print(formatted)
 
 
 if __name__ == '__main__':
