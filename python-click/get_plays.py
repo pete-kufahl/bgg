@@ -146,7 +146,8 @@ def get_game_data(username, start_date, end_date) -> List:
 @click.option('-u', '--username', help='BGG username', required=True)
 @click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
 @click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
-def main(username, start_date, end_date):
+@click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
+def main(username, start_date, end_date, print_with_links):
 
     # Convert start_date and end_date to datetime objects if needed
     if isinstance(start_date, str):
@@ -163,6 +164,8 @@ def main(username, start_date, end_date):
         rating = game['rating_value']
         rating_str = map_rating(rating, 1)
         name = game['name']
+        game_id = game['game_id']
+        name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
         rank = game['rank']
         plays = game['play_count']
         plays_str = f' x{plays}' if int(plays) > 1 else ''
@@ -176,7 +179,7 @@ def main(username, start_date, end_date):
                 rank_str = '[size=8]' + 'unranked' + ' [/size]'
             else:
                 rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
-            print(f'[c]{rank_str} [/c]{rating_str} {name}{plays_str} {total_str}')
+            print(f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}')
         else:
             print(f'{rating_str} {name}{plays_str} {total_str}')
 
