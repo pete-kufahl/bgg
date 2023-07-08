@@ -154,7 +154,10 @@ def main(username, start_date, end_date):
     if isinstance(end_date, str):
         end_date = date_parser.parse(end_date).date()
 
-    game_bgg_data = get_game_data(username, start_date, end_date)
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    game_bgg_data = get_game_data(username, start_date_str, end_date_str)
 
     for game in game_bgg_data:
         rating = game['rating_value']
