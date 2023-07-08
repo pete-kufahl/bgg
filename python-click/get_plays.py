@@ -13,7 +13,7 @@ from dateutil import parser as date_parser
 debug = False
 print_rank = True
 
-def extract_game_data(xml_str, debug=False):
+def extract_game_data(xml_str, debug: bool = False):
     root = ET.fromstring(xml_str)
     games = root.findall('.//item')
     i = 0
@@ -66,7 +66,7 @@ def map_rating(rating, spaces=1) -> str:
         1: '[BGCOLOR=#FF0000] [b]' + str(rating) + '[/b] [/BGCOLOR]'
     }.get(k, '[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]') + spacer
 
-def get_game_data(username, start_date, end_date) -> List:
+def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
     """ fetches the relevant games played data and returns a list of records """
     mindate = start_date
     maxdate = end_date
@@ -78,7 +78,7 @@ def get_game_data(username, start_date, end_date) -> List:
     response = requests.get(url)
 
     while response.status_code == 202:
-        print("Waiting for response...")
+        print('Waiting for response...')
         time.sleep(0.33)
         response = requests.get(url)
 
@@ -109,7 +109,7 @@ def get_game_data(username, start_date, end_date) -> List:
     # Print the number of plays per game
     if debug:
         for game_id, play_count in plays_per_game.items():
-            print(f"Game ID: {game_id}, Plays: {play_count}")
+            print(f'Game ID: {game_id}, Plays: {play_count}')
 
     url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={username}&id=' + game_ids_str + '&stats=1'
     tries_left = 2
@@ -122,7 +122,7 @@ def get_game_data(username, start_date, end_date) -> List:
         response = requests.get(url2)
 
         while response.status_code == 202:
-            print("Waiting for response...")
+            print('Waiting for response...')
             time.sleep(0.33)
             response = requests.get(url)
 
@@ -130,7 +130,7 @@ def get_game_data(username, start_date, end_date) -> List:
             print(f'url request failed with code {response.status_code}')
             exit(1)
 
-        game_bgg_data = extract_game_data(response.text, debug=False)
+        game_bgg_data = extract_game_data(response.text, debug=debug)
         if len(game_bgg_data) > 0:
             break
     else:
@@ -147,7 +147,8 @@ def get_game_data(username, start_date, end_date) -> List:
 @click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
 @click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
 @click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
-def main(username, start_date, end_date, print_with_links):
+@click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
+def main(username, start_date, end_date, print_with_links, debug):
 
     # Convert start_date and end_date to datetime objects if needed
     if isinstance(start_date, str):
@@ -158,7 +159,7 @@ def main(username, start_date, end_date, print_with_links):
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
 
-    game_bgg_data = get_game_data(username, start_date_str, end_date_str)
+    game_bgg_data = get_game_data(username, start_date_str, end_date_str, debug=debug)
 
     for game in game_bgg_data:
         rating = game['rating_value']
