@@ -14,6 +14,7 @@ def extract_game_data(xml_str, debug: bool = False):
     games = root.findall('.//item')
     i = 0
     game_data = []
+    warned = False
     if debug:
         print(f'extract_game_data: {len(games)} games found')
     for game in games:
@@ -40,7 +41,9 @@ def extract_game_data(xml_str, debug: bool = False):
             }
             game_data.append(game_info)
         except AttributeError as ex:
-            print(f'missing attribute for game-id {game_id}, despite the API request\'s 200 return! Try running again?')
+            if not warned:
+                print(f'missing attribute for game-id {game_id} (and possibly others), despite the API request\'s 200 return! Try running again?')
+                warned = True
         except Exception as other_ex:
             print(other_ex)
             return []
@@ -71,6 +74,8 @@ def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
     url = f'https://boardgamegeek.com/xmlapi2/plays?username={username}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
 
     # Make the API request
+    if debug:
+            print(url + ' ...') 
     response = requests.get(url)
 
     while response.status_code == 202:
@@ -159,7 +164,7 @@ def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: b
             rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
         formatted = f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}'
     else:
-        formatted = f'{rating_str} {name}{plays_str} {total_str}'
+        formatted = f'{rating_str} {name_str}{plays_str} {total_str}'
     return formatted
 
 
