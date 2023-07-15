@@ -165,3 +165,17 @@ def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
         game['play_count'] = plays_per_game[game['game_id']]
     game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
     return game_bgg_data
+
+def get_deep_cuts(data: List, minimum: int) -> List:
+    """
+    filters a list of game records by BGG rank. The threshold for inclusion is a minimum, so unranked
+    games (designated by the word Not in the rank field) are considered deep cuts and therefore
+    included.
+    """
+    filtered_list = []
+
+    for record in data:
+        bgg_rank = record.get('rank')
+        if 'Not' in str(bgg_rank) or int(bgg_rank) >= minimum:
+            filtered_list.append(record)
+    return filtered_list
