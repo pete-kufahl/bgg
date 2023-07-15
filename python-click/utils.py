@@ -51,6 +51,7 @@ def extract_game_data(xml_str: str, debug: bool = False):
             rating_value = game.find('stats/rating').attrib['value']
             average_rating = game.find('stats/rating/average').attrib['value']
             bayes_average_rating = game.find('stats/rating/bayesaverage').attrib['value']
+            comment = game.find('comment').text
 
             game_info = {
                 'game_id': game_id,
@@ -59,7 +60,8 @@ def extract_game_data(xml_str: str, debug: bool = False):
                 'numplays': numplays,
                 'rating_value': rating_value,
                 'average_rating': average_rating,
-                'bayes_average_rating': bayes_average_rating
+                'bayes_average_rating': bayes_average_rating,
+                'comment': comment
             }
             game_data.append(game_info)
         except AttributeError as ex:
@@ -172,10 +174,25 @@ def get_deep_cuts(data: List, minimum: int) -> List:
     games (designated by the word Not in the rank field) are considered deep cuts and therefore
     included.
     """
-    filtered_list = []
-
+    ret = []
     for record in data:
         bgg_rank = record.get('rank')
         if 'Not' in str(bgg_rank) or int(bgg_rank) >= minimum:
-            filtered_list.append(record)
-    return filtered_list
+            ret.append(record)
+    return ret
+
+def get_new_to_me(data: List, debug: bool=False) -> List:
+    """
+    filters a list of game records by new-to-me criterion: if the number of plays inside the search window
+    (play_count) equals the total number of plays, the game is included in the returned list.
+    """
+    ret = []
+    for game in data:
+        plays = game['play_count']
+        total = game['numplays']
+        if debug:
+            game_name = game['name']
+            print(f'for game {game_name}, play count={plays} and total plays={total}')
+        if int(plays) == int(total):
+            ret.append(game)
+    return ret
