@@ -5,6 +5,31 @@ import xml.etree.ElementTree as ET
 
 import requests
 
+def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: bool = False):
+    """ converts BGG and games played data into formatted line of text """
+    rating = game['rating_value']
+    rating_str = map_rating(rating, 1)
+    name = game['name']
+    game_id = game['game_id']
+    name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
+    rank = game['rank']
+    plays = game['play_count']
+    plays_str = f' x{plays}' if int(plays) > 1 else ''
+    total = game['numplays']
+    if int(plays) == int(total):
+        total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
+    else:
+        total_str = f'[size=7]({total} so far)[/size]'
+    if print_ranks:
+        if 'Not' in str(rank):
+            rank_str = '[size=8]' + 'unranked' + ' [/size]'
+        else:
+            rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
+        formatted = f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}'
+    else:
+        formatted = f'{rating_str} {name_str}{plays_str} {total_str}'
+    return formatted
+
 
 def extract_game_data(xml_str: str, debug: bool = False):
     root = ET.fromstring(xml_str)
