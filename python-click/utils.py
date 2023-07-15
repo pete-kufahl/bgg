@@ -195,4 +195,6 @@ def get_new_to_me(data: List, debug: bool=False) -> List:
             print(f'for game {game_name}, play count={plays} and total plays={total}')
         if int(plays) == int(total):
             ret.append(game)
+    if len(ret) > 0:
+        ret.sort(key=lambda x: x['rating_value'], reverse=True)
     return ret
