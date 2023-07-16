@@ -1,172 +1,14 @@
 import sys
-from typing import List
-import requests
-import time
-import xml.etree.ElementTree as ET
-from collections import defaultdict
+
+from utils import *
 
 import click
 from datetime import date, timedelta
 from dateutil import parser as date_parser
 
-def extract_game_data(xml_str, debug: bool = False):
-    root = ET.fromstring(xml_str)
-    games = root.findall('.//item')
-    i = 0
-    game_data = []
-    warned = False
-    if debug:
-        print(f'extract_game_data: {len(games)} games found')
-    for game in games:
-        game_id = game.attrib['objectid']
-        if debug:
-            i += 1
-            print(f'game {i}: {game_id} ...')
-        try:
-            name = game.find('name').text
-            rank = game.find('.//rank[@type="subtype"]').attrib['value']
-            numplays = game.find('numplays').text
-            rating_value = game.find('stats/rating').attrib['value']
-            average_rating = game.find('stats/rating/average').attrib['value']
-            bayes_average_rating = game.find('stats/rating/bayesaverage').attrib['value']
-
-            game_info = {
-                'game_id': game_id,
-                'name': name,
-                'rank': rank,
-                'numplays': numplays,
-                'rating_value': rating_value,
-                'average_rating': average_rating,
-                'bayes_average_rating': bayes_average_rating
-            }
-            game_data.append(game_info)
-        except AttributeError as ex:
-            if not warned:
-                print(f'missing attribute for game-id {game_id} (and possibly others), despite the API request\'s 200 return! Try running again?')
-                warned = True
-        except Exception as other_ex:
-            print(other_ex)
-            return []
-    return game_data
-
-def map_rating(rating, spaces=1) -> str:
-    spacer = ' ' * int(spaces)
-    k = int(rating) if rating.isdigit() else -1
-    return {
-        10: '[BGCOLOR=#00CC00] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        9: '[BGCOLOR=#33CC99] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        8: '[BGCOLOR=#66FF99] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        7: '[BGCOLOR=#99FFFF] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        6: '[BGCOLOR=#9999FF] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        5: '[BGCOLOR=#CC99FF] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        4: '[BGCOLOR=#FF66CC] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        3: '[BGCOLOR=#FF6699] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        2: '[BGCOLOR=#FF3366] [b]' + str(rating) + '[/b] [/BGCOLOR]',
-        1: '[BGCOLOR=#FF0000] [b]' + str(rating) + '[/b] [/BGCOLOR]'
-    }.get(k, '[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]') + spacer
-
-def get_game_data(username, start_date, end_date, debug: bool = False) -> List:
-    """ fetches the relevant games played data and returns a list of records """
-    mindate = start_date
-    maxdate = end_date
-
-    # API request URL
-    url = f'https://boardgamegeek.com/xmlapi2/plays?username={username}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
-
-    # Make the API request
-    if debug:
-            print(url + ' ...') 
-    response = requests.get(url)
-
-    while response.status_code == 202:
-        print('Waiting for response...')
-        time.sleep(0.33)
-        response = requests.get(url)
-
-    if response.status_code != 200:
-        print(f'url request failed with code {response.status_code}')
-        exit(1)
-
-    xml_str = response.text
-
-    # Parse the XML string
-    root = ET.fromstring(xml_str)
-
-    # Extract game IDs and number of plays
-    gameplays = root.findall('.//play')
-    plays_per_game = defaultdict(int)
-
-    for gameplay in gameplays:
-        game = gameplay.find('item')
-        assert game
-        game_id = game.attrib['objectid']
-        play_count = gameplay.attrib.get('quantity', 1)
-        plays_per_game[game_id] += int(play_count)
-
-    # look up the game rank and name for each id
-    game_ids = [int(k) for k in plays_per_game.keys()]
-    game_ids_str = ",".join(map(str, game_ids))
-
-    # Print the number of plays per game
-    if debug:
-        for game_id, play_count in plays_per_game.items():
-            print(f'Game ID: {game_id}, Plays: {play_count}')
-
-    url2 = f'https://boardgamegeek.com/xmlapi2/collection?username={username}&id=' + game_ids_str + '&stats=1'
-    tries_left = 2
-    game_bgg_data = []
-    while tries_left > 0:
-        tries_left -= 1
-        # Make the API request
-        if debug:
-            print(url2 + ' ...') 
-        response = requests.get(url2)
-
-        while response.status_code == 202:
-            print('Waiting for response...')
-            time.sleep(0.33)
-            response = requests.get(url)
-
-        if response.status_code != 200:
-            print(f'url request failed with code {response.status_code}')
-            exit(1)
-
-        game_bgg_data = extract_game_data(response.text, debug=debug)
-        if len(game_bgg_data) > 0:
-            break
-    else:
-        print(f'else of while loop reached! Try in browser: {url2}')
-
-    for game in game_bgg_data:
-        game['play_count'] = plays_per_game[game['game_id']]
-    game_bgg_data.sort(key=lambda x: x['play_count'], reverse=True)
-    return game_bgg_data
-
-def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: bool = False):
-    """ converts BGG and games played data into formatted line of text """
-    rating = game['rating_value']
-    rating_str = map_rating(rating, 1)
-    name = game['name']
-    game_id = game['game_id']
-    name_str = f'[thing={game_id}]{name}[/thing]' if print_with_links else name
-    rank = game['rank']
-    plays = game['play_count']
-    plays_str = f' x{plays}' if int(plays) > 1 else ''
-    total = game['numplays']
-    if int(plays) == int(total):
-        total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
-    else:
-        total_str = f'[size=7]({total} so far)[/size]'
-    if print_ranks:
-        if 'Not' in str(rank):
-            rank_str = '[size=8]' + 'unranked' + ' [/size]'
-        else:
-            rank_str = '[size=8]' + str(rank).rjust(8,' ') + ' [/size]'
-        formatted = f'[c]{rank_str} [/c]{rating_str} {name_str}{plays_str} {total_str}'
-    else:
-        formatted = f'{rating_str} {name_str}{plays_str} {total_str}'
-    return formatted
-
+@click.group()
+def cli():
+    pass
 
 @click.command()
 @click.option('-u', '--username', help='BGG username', required=True)
@@ -175,7 +17,7 @@ def format_line_of_game_info(game, print_with_links: bool = True, print_ranks: b
 @click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
 @click.option('-r', '--print-ranks', is_flag=True, help='Print BGG ranks')
 @click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
-def main(username, start_date, end_date, print_with_links, print_ranks, debug):
+def all(username, start_date, end_date, print_with_links, print_ranks, debug):
 
     # Convert start_date and end_date to datetime objects if needed
     if isinstance(start_date, str):
@@ -193,5 +35,73 @@ def main(username, start_date, end_date, print_with_links, print_ranks, debug):
         print(formatted)
 
 
+@click.command()
+@click.option('-u', '--username', help='BGG username', required=True)
+@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
+@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
+@click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
+@click.option('-r', '--print-ranks', is_flag=True, help='Print BGG ranks')
+@click.option('-t', '--threshold', help='lowest BGG rank to display', default=1000)
+@click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
+def deep(username, start_date, end_date, print_with_links, print_ranks, threshold, debug):
+
+    # Convert start_date and end_date to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = date_parser.parse(start_date).date()
+    if isinstance(end_date, str):
+        end_date = date_parser.parse(end_date).date()
+
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    game_bgg_data = get_game_data(username, start_date_str, end_date_str, debug=debug)
+    if debug:
+        print(f'using minimum BGG rank of {threshold}...')
+    filtered_data = get_deep_cuts(data=game_bgg_data, minimum=threshold)
+
+    for game in filtered_data:
+        formatted = format_line_of_game_info(game, print_with_links, print_ranks)
+        print(formatted)
+
+@click.command()
+@click.option('-u', '--username', help='BGG username', required=True)
+@click.option('-s', '--start-date', help='Start date (YYYY-MM-DD)', default=(date.today() - timedelta(days=7)).isoformat())
+@click.option('-e', '--end-date', help='End date (YYYY-MM-DD)', default=date.today().isoformat())
+@click.option('-l', '--print-with-links', is_flag=True, help='Print with links')
+@click.option('-r', '--print-ranks', is_flag=True, help='Print BGG ranks')
+@click.option('-c', '--comments', is_flag=True, help='Include comments from Collections')
+@click.option('-i', '--image-placeholders', is_flag=True, help='Include placeholder text for images from Gallerys')
+@click.option('-d', '--debug', is_flag=True, help='Output debug messages to console')
+def new(username, start_date, end_date, print_with_links, print_ranks, comments, image_placeholders, debug):
+
+    # Convert start_date and end_date to datetime objects if needed
+    if isinstance(start_date, str):
+        start_date = date_parser.parse(start_date).date()
+    if isinstance(end_date, str):
+        end_date = date_parser.parse(end_date).date()
+
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    game_bgg_data = get_game_data(username, start_date_str, end_date_str, debug=debug)
+    filtered_data = get_new_to_me(data=game_bgg_data, debug=debug)
+
+    for game in filtered_data:
+        
+        formatted = format_line_of_game_info(game, print_with_links, print_ranks)
+        print(formatted)
+        if image_placeholders:
+            print(f'\n[imageID=PLACEHOLDER medium][size=7]image by CREDIT[/size]\n')
+        if comments:
+            comment_str = game.get('comment')
+            if comment_str:
+                print(comment_str)
+                print()
+            
+
+cli.add_command(all)
+cli.add_command(deep)
+cli.add_command(new)
+
 if __name__ == '__main__':
-    main()
+    cli()

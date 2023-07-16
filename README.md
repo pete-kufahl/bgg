@@ -13,13 +13,18 @@ Obviously, the BGG account has to have logged plays for this to work. Once verif
 ## python-click
 This contains an expanded version of the basic script, converted into a UNIX-style command line tool with the `click` library. That means the arguments can be in any order.
 
+However, you have to supply a **subcommand** to the program to specify the kind of list you want:
+* `all` lists all the gameplays within the time period, sorted by number of plays
+* `new` lists the games new to your collection statistics, sorted by user rating
+* `deep` lists the games that are unranked by BGG, or have a BGG ranking of at least some threshold (specified by the `-t` flag)
+
 Fetch the last 7 days:
-> `python get_plays.py -u {bgg username}`
+> `python get_plays.py all -u {bgg username}`
 
 Use custom start and end dates:
-> `python get_plays.py -u {bgg username} -s {start date} -e {end date}`
+> `python get_plays.py all -u {bgg username} -s {start date} -e {end date}`
 
 The dates do not have to be in a `YYYY-MM-DD` format, but I haven't fully tested the `dateutil.parser` submodule. Something like "April 1, 2023" should work.
 
 This gives a summary of the required and optional arguments:
-> `python get_plays.py --help`
+> `python get_plays.py {subcommand} --help`
