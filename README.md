@@ -28,3 +28,6 @@ The dates do not have to be in a `YYYY-MM-DD` format, but I haven't fully tested
 
 This gives a summary of the required and optional arguments:
 > `python get_plays.py {subcommand} --help`
+
+## rust
+This subdirectory will contain `get_plays.rs`, an attempt to replicate the functionality of what we have in the **python-click** version in the rust language.
