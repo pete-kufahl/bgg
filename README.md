@@ -28,3 +28,6 @@ The dates do not have to be in a `YYYY-MM-DD` format, but I haven't fully tested
 
 This gives a summary of the required and optional arguments:
 > `python get_plays.py {subcommand} --help`
+
+## node-cli
+This contains the same tool as python-click, only it's implemented in node.js.
