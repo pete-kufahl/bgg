@@ -1,34 +1,34 @@
 // utils
 const axios = require('axios');
 const { parseString } = require('xml2js');
-const { formatISO, parse, subDays } = require('date-fns');
+const { parse, subDays, format } = require('date-fns');
 
-function parseAndFormatDate(inputDate, defaultValue) {
-    if (!inputDate) {
-        return formatISO(subDays(new Date(), defaultValue), { representation: 'date' });
-    }
+const { preferredNames } = require('./preferredLabels')
 
-    const parsedDate = parse(inputDate, { strict: false });
-
-    if (isValid(parsedDate)) {
-        return formatISO(parsedDate, { representation: 'date' });
-    } else {
-        console.error(`Error: Invalid date format for "${inputDate}". Please use a valid date format.`);
-        process.exit(1);
-    }
-}
+const parseAndFormatDate = (dateString, daysAgo) => {
+    const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
+    const formattedDate = format(subDays(parsedDate, daysAgo), 'yyyy-MM-dd');
+    return formattedDate;
+};
 
 async function fetchGamesPlayed(username, startdate, enddate) {
+    console.log('fetchgamesplayed')
     // Define the URL template with placeholders for username, startdate, and enddate
     const apiUrlTemplate1 = 'https://boardgamegeek.com/xmlapi2/plays?username=%USERNAME%&mindate=%MINDATE%&maxdate=%MAXDATE%&type=thing&subtype=boardgame&brief=1';
 
     // Replace placeholders in the URL template with actual values
     //  bgg mindate = startdate, bgg maxdate = enddate
-    const apiUrl1 = apiUrlTemplate1
-    .replace('%USERNAME%', encodeURIComponent(username))
-    .replace('%MINDATE%', encodeURIComponent(parseAndFormatDate(startdate, 7)))
-    .replace('%MAXDATE%', encodeURIComponent(parseAndFormatDate(enddate, 0)));
-
+    console.log('before url1 template', typeof startdate)
+    var apiUrl1 = ''
+    try {
+        apiUrl1 = apiUrlTemplate1
+          .replace('%USERNAME%', encodeURIComponent(username))
+          .replace('%MINDATE%', encodeURIComponent(parseAndFormatDate(startdate, 7)))
+          .replace('%MAXDATE%', encodeURIComponent(parseAndFormatDate(enddate, 0)));
+        console.log('after url1 template:', apiUrl1);
+      } catch (error) {
+        console.error('Error during URL construction:', error);
+    }
     const maxRetries = 3;
     let retryCount = 0;
 
@@ -44,6 +44,7 @@ async function fetchGamesPlayed(username, startdate, enddate) {
 
             return new Promise((resolve, reject) => {
                 // Parse the XML string
+                console.log('promise')
                 parseString(xml_str, (err, result) => {
                 if (err) {
                     reject(new Error(`Error parsing XML: ${err.message}`));
@@ -71,6 +72,7 @@ async function fetchGamesPlayed(username, startdate, enddate) {
      }
 */
 function parseAllGamesPlayed(result, debug = false) {
+    console.log('parse all gamesplayed')
     // Extract game IDs and number of plays
     const gameplays = result.plays && result.plays.play ? result.plays.play : [];
     const plays_per_game = {};
@@ -144,7 +146,13 @@ function parseGameDetails(result, debug = false) {
     const items = result.items && result.items.item ? result.items.item : [];
     return items.map(item => {
         //debug && console.log(item)
-        parsed_id = parseInt(item.$.objectid, 10)
+        const parsed_id = parseInt(item.$.objectid, 10)
+
+        // get game name
+        game_name = item.name && item.name[0]._
+        if (parsed_id in preferredNames) {
+            game_name = preferredNames[parsed_id]
+        }
         // fish out the ratings statistics
         const ratings = item.stats[0]?.rating;
         const user_rating = ratings[0].$.value
@@ -160,7 +168,7 @@ function parseGameDetails(result, debug = false) {
 
         return {
             game_id: parsed_id,
-            name: item.name && item.name[0]._,
+            name: game_name,
             // year published
             rank: subtype_rank_value,
             numplays: item.numplays && item.numplays[0],
@@ -227,5 +235,32 @@ function mapRating(rating, spaces = 1) {
     }
 }
 
+function formatGameInfo(game, print_with_links = true, print_ranks = false) {
+    const rating_str = mapRating(game['rating_value'], 1)
+    const name = game['name']
+    const game_id = game['game_id']
+    name_str = print_with_links ? `[thing=${game_id}]${name}[/thing]` : name
+    rank = String(game['rank'])
+    plays = game['play_count']
+    plays_str = plays > 1 ? ` x${plays}` : ''
+    total = parseInt(game['numplays'], 10)
+    if (plays == total) {
+        total_str = '[b][COLOR=#FF0000][size=7]NEW![/size][/COLOR][/b]'
+    } else {
+        total_str = `[size=7](${total} so far)[/size]`
+    }
+    if (print_ranks) {
+        if (rank.startsWith('Not')) {
+            rank_str = '[size=8]' + 'unranked' + ' [/size]'
+        } else {
+            rank_str = '[size=8]' + rank.padStart(8, ' ') + ' [/size]'
+        }
+        formatted = `[c]${rank_str} [/c]${rating_str} ${name_str}${plays_str} ${total_str}`
+    } else {
+        formatted = `${rating_str} ${name_str}${plays_str} ${total_str}`
+    }
+    return formatted
+}
+
   
-module.exports = { fetchGamesPlayed, fetchGameDetails, mapRating };
+module.exports = { fetchGamesPlayed, fetchGameDetails, formatGameInfo };
