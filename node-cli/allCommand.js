@@ -18,7 +18,7 @@ function parseAndFormatDate(inputDate, defaultValue) {
     }
 }
 
-async function fetchDataWithRetry(username, startdate, enddate) {
+async function fetchGamesPlayed(username, startdate, enddate) {
     // Define the URL template with placeholders for username, startdate, and enddate
     // f'https://boardgamegeek.com/xmlapi2/plays?username={username}&mindate={mindate}&maxdate={maxdate}&type=thing&subtype=boardgame&brief=1'
     const apiUrlTemplate1 = 'https://boardgamegeek.com/xmlapi2/plays?username=%USERNAME%&mindate=%MINDATE%&maxdate=%MAXDATE%&type=thing&subtype=boardgame&brief=1';
@@ -27,52 +27,68 @@ async function fetchDataWithRetry(username, startdate, enddate) {
     //  bgg mindate = startdate, bgg maxdate = enddate
     const apiUrl1 = apiUrlTemplate1
     .replace('%USERNAME%', encodeURIComponent(username))
-    .replace('%MINDATE%', startdate ? encodeURIComponent(startdate) : '')
-    .replace('%MAXDATE%', enddate ? encodeURIComponent(enddate) : '');
+    .replace('%MINDATE%', encodeURIComponent(parseAndFormatDate(startdate, 7)))
+    .replace('%MAXDATE%', encodeURIComponent(parseAndFormatDate(enddate, 0)));
 
-    let retryCount = 0;
     const maxRetries = 3;
+    let retryCount = 0;
 
-    do {
+    while (retryCount <= maxRetries) {
         if (retryCount > 0) {
-        console.log(`Retrying (attempt ${retryCount})...`);
-        await sleep(330);
+            console.log(`Retrying (attempt ${retryCount})...`);
+            await sleep(330);
         }
 
-    try {
-        const response = await axios.get(apiUrl1);
+        try {
+            const response = await axios.get(apiUrl1);
+            const xml_str = response.data;
 
-        if (response.status === 200) {
-            const xmlData = response.data;
-            // Parse XML to JavaScript object
-            parseString(xmlData, (err, result) => {
+            return new Promise((resolve, reject) => {
+                // Parse the XML string
+                parseString(xml_str, (err, result) => {
                 if (err) {
-                    console.error('Error parsing XML:', err.message);
+                    reject(new Error(`Error parsing XML: ${err.message}`));
                 } else {
-                    console.log('Parsed XML:', JSON.stringify(result, null, 2));
+                    resolve(parseAllGamesPlayed(result));
                 }
-        });
-
-        return;
-        } else if (response.status === 202) {
-            console.log(`Received 202 status code. Retrying...`);
-        } else {
-            console.error(`Unexpected status code: ${response.status}`);
-            return;
+                });
+            });
+        } catch (error) {
+        console.error('Error fetching data:', error.message);
+        retryCount++;
         }
-    } catch (error) {
-      console.error('Error fetching data:', error.message);
-      return;
     }
 
-    retryCount++;
-  } while (retryCount <= maxRetries);
+    throw new Error('Max retries reached (first URL). Unable to get a successful response.');
+}
 
-  console.error(`Max retries reached. Unable to get a 200 status code.`);
+/*
+    given the parsed XML result of the initial API call, returns an object with keys being the
+     bgg game idm and values the total plays
+    {
+
+    }
+    returns an
+*/
+function parseAllGamesPlayed(result, debug = false) {
+    // Extract game IDs and number of plays
+    const gameplays = result.plays && result.plays.play ? result.plays.play : [];
+    const plays_per_game = {};
+
+    gameplays.forEach(gameplay => {
+        const game = gameplay.item && gameplay.item[0];
+        if (game) {
+            const game_id = parseInt(game.$.objectid, 10);
+            const play_count = parseInt(gameplay.$.quantity || 1, 10);
+            plays_per_game[game_id] = (plays_per_game[game_id] || 0) + play_count;
+        }
+    });
+
+    return plays_per_game;
 }
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { fetchDataWithRetry };
+module.exports = { fetchGamesPlayed };
