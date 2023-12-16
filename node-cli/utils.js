@@ -126,7 +126,7 @@ async function fetchGameDetails (username, plays_per_game, debug1 = false, debug
                     } else if (!result?.items) {
                         console.log('no items, message: ' + result?.message);
                     } else {
-                        resolve(parseGameDetails(result, debug2));
+                        resolve(sortByPlays(parseGameDetails(result, debug2), plays_per_game));
                     }
                 });
             });
@@ -144,7 +144,7 @@ function parseGameDetails(result, debug = false) {
     const items = result.items && result.items.item ? result.items.item : [];
     return items.map(item => {
         //debug && console.log(item)
-        
+        parsed_id = parseInt(item.$.objectid, 10)
         // fish out the ratings statistics
         const ratings = item.stats[0]?.rating;
         const user_rating = ratings[0].$.value
@@ -159,8 +159,8 @@ function parseGameDetails(result, debug = false) {
         const subtype_rank_value = subtype_rank ? subtype_rank.$.value : null;
 
         return {
-            itemId: item.$.objectid,
-            itemName: item.name && item.name[0]._,
+            game_id: parsed_id,
+            name: item.name && item.name[0]._,
             // year published
             rank: subtype_rank_value,
             numplays: item.numplays && item.numplays[0],
@@ -176,4 +176,56 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { fetchGamesPlayed, fetchGameDetails };
+// Function to remove leading "The" from names for sorting
+function removeLeadingThe(name) {
+    return name.replace(/^The\s+/i, '');
+}
+
+function sortByPlays(game_details, plays_per_game) {
+    // Update play_count property for each game in game_details
+    game_details.forEach(game => {
+        game.play_count = plays_per_game[game.game_id] || 0;
+    });
+
+    game_details.sort((a, b) => {
+        // First level of sort: by play_count in descending order
+        const diff = b.play_count - a.play_count;
+        if (diff !== 0) { return diff; }
+        // Second level of sort: by name in ascending order
+        return a.name.localeCompare(removeLeadingThe(b.name));
+    });
+    return game_details;
+}
+
+function mapRating(rating, spaces = 1) {
+    const spacer = ' '.repeat(parseInt(spaces, 10));
+    const k = rating.trim().match(/^\d+$/) ? parseInt(rating, 10) : -1;
+  
+    switch (k) {
+        case 10:
+            return `[BGCOLOR=#00CC00] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 9:
+            return `[BGCOLOR=#33CC99] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 8:
+            return `[BGCOLOR=#66FF99] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 7:
+            return `[BGCOLOR=#99FFFF] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 6:
+            return `[BGCOLOR=#9999FF] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 5:
+            return `[BGCOLOR=#CC99FF] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 4:
+            return `[BGCOLOR=#FF66CC] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 3:
+            return `[BGCOLOR=#FF6699] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 2:
+            return `[BGCOLOR=#FF3366] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        case 1:
+            return `[BGCOLOR=#FF0000] [b]${rating}[/b] [/BGCOLOR]${spacer}`;
+        default:
+            return `[BGCOLOR=#A3A3A3] [b]--[/b] [/BGCOLOR]${spacer}`;
+    }
+}
+
+  
+module.exports = { fetchGamesPlayed, fetchGameDetails, mapRating };
