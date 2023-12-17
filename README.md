@@ -31,3 +31,10 @@ This gives a summary of the required and optional arguments:
 
 ## node-cli
 This contains the same tool as python-click, only it's implemented in node.js.
+
+> `node get_plays.js all -u {bgg username} -s {start date yyyy-mm-dd} -e {end date yyyy-mm-dd} -lr`
+
+In this case, the date arguments MUST be in the `YYYY-MM-DD` format. I haven't been able to get realiably flexible behavior out of the `date-fns` package. However, the default arguments corresponding to the last 7 days are still available.
+
+Other minor changes:
+* There's a source file `labels.js` that maps BGG game IDs to alternate game titles.

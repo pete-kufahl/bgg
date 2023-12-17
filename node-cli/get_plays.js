@@ -8,7 +8,7 @@ program
 program
     .command('all')
     .description('Fetch data for all records')
-    .option('-u, --username <username>', 'The username to include in the URL')
+    .requiredOption('-u, --username <username>', 'The username to include in the URL')
     .option('-s, --startdate <date>', 'Start date (yyyy-MM-dd) for data fetching. Default: Seven days ago.')
     .option('-e, --enddate <date>', 'End date (yyyy-MM-dd) for data fetching. Default: Now.')
     .option('-l, --links', 'output game names as BGG links')
@@ -17,9 +17,7 @@ program
     .action(async (options) => {
         try {
             const { username, startdate, enddate, links, ranks, debug } = options;
-            console.log(options)
             const plays_per_game = await fetchGamesPlayed(username, startdate, enddate);
-            console.log('ok!')
             const details = await fetchGameDetails(username, plays_per_game);
             // for (const game_id of game_ids)
             for (const game_info of details) {

@@ -3,7 +3,7 @@ const axios = require('axios');
 const { parseString } = require('xml2js');
 const { parse, subDays, format } = require('date-fns');
 
-const { preferredNames } = require('./preferredLabels')
+const { preferredNames } = require('./labels')
 
 const parseAndFormatDate = (dateString, daysAgo) => {
     const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
@@ -12,20 +12,17 @@ const parseAndFormatDate = (dateString, daysAgo) => {
 };
 
 async function fetchGamesPlayed(username, startdate, enddate) {
-    console.log('fetchgamesplayed')
     // Define the URL template with placeholders for username, startdate, and enddate
     const apiUrlTemplate1 = 'https://boardgamegeek.com/xmlapi2/plays?username=%USERNAME%&mindate=%MINDATE%&maxdate=%MAXDATE%&type=thing&subtype=boardgame&brief=1';
 
     // Replace placeholders in the URL template with actual values
     //  bgg mindate = startdate, bgg maxdate = enddate
-    console.log('before url1 template', typeof startdate)
     var apiUrl1 = ''
     try {
         apiUrl1 = apiUrlTemplate1
           .replace('%USERNAME%', encodeURIComponent(username))
           .replace('%MINDATE%', encodeURIComponent(parseAndFormatDate(startdate, 7)))
           .replace('%MAXDATE%', encodeURIComponent(parseAndFormatDate(enddate, 0)));
-        console.log('after url1 template:', apiUrl1);
       } catch (error) {
         console.error('Error during URL construction:', error);
     }
@@ -44,7 +41,6 @@ async function fetchGamesPlayed(username, startdate, enddate) {
 
             return new Promise((resolve, reject) => {
                 // Parse the XML string
-                console.log('promise')
                 parseString(xml_str, (err, result) => {
                 if (err) {
                     reject(new Error(`Error parsing XML: ${err.message}`));
@@ -72,7 +68,6 @@ async function fetchGamesPlayed(username, startdate, enddate) {
      }
 */
 function parseAllGamesPlayed(result, debug = false) {
-    console.log('parse all gamesplayed')
     // Extract game IDs and number of plays
     const gameplays = result.plays && result.plays.play ? result.plays.play : [];
     const plays_per_game = {};
@@ -88,7 +83,7 @@ function parseAllGamesPlayed(result, debug = false) {
     return plays_per_game;
 }
 
-async function fetchGameDetails (username, plays_per_game, debug1 = false, debug2 = true) {
+async function fetchGameDetails (username, plays_per_game, debug1 = false, debug2 = false) {
     // Look up the game rank and name for each ID
     const game_ids = Object.keys(plays_per_game).map(Number);
     const game_ids_str = game_ids.join(',');
