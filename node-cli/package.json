@@ -2,12 +2,12 @@
   "name": "bgg-cli",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "get_plays.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "P. Kufahl",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.2",

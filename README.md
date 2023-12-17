@@ -30,7 +30,7 @@ This gives a summary of the required and optional arguments:
 > `python get_plays.py {subcommand} --help`
 
 ## node-cli
-This contains the same tool as python-click, only it's implemented in node.js.
+This contains the same tool as python-click, only it's implemented in node.js. It utilizes the `axios` and `commander` modules, among others.
 
 > `node get_plays.js all -u {bgg username} -s {start date yyyy-mm-dd} -e {end date yyyy-mm-dd} -lr`
 
