@@ -67,4 +67,37 @@ program
         }
     })
 
+program
+    .command('deep')
+    .description('Lists the games more obscure than a given BGG rank threshold')
+    .requiredOption('-u, --username <username>', 'The username to include in the URL')
+    .option('-s, --startdate <date>', 'Start date (yyyy-MM-dd) for data fetching. Default: Seven days ago.')
+    .option('-e, --enddate <date>', 'End date (yyyy-MM-dd) for data fetching. Default: Now.')
+    .option('-l, --links', 'output game names as BGG links')
+    .option('-r, --ranks', 'include BGG ranks in output')
+    .option('-t, --threshold <number>', 'minimum BGG rank in listing. Default: 1000', '1000')
+    .option('-d, --debug', 'output extra debugging')
+    .action(async (options) => {
+        try {
+            const { username, startdate, enddate, links, ranks, threshold, debug } = options;
+            const plays_per_game = await fetchGamesPlayed(username, startdate, enddate);
+            const details = await fetchGameDetails(username, plays_per_game);
+
+            const cutoff = parseInt(threshold, 10);
+            console.log(`using threshold of ${threshold} ...\n`)
+            const deep_cuts = details.filter(obj => {
+                num = parseInt(obj.rank, 10);
+                return isNaN(num) || num >= cutoff;
+            });
+            for (const game_info of deep_cuts) {
+                formatted = formatGameInfo(game_info, links, ranks);
+                console.log(formatted);
+            }
+
+        } catch (error) {
+            console.error('Error:', error.message);
+            process.exit(1);
+        }
+    })
+
 program.parse(process.argv);
