@@ -29,5 +29,19 @@ The dates do not have to be in a `YYYY-MM-DD` format, but I haven't fully tested
 This gives a summary of the required and optional arguments:
 > `python get_plays.py {subcommand} --help`
 
+## node-cli
+This contains the same tool as python-click, only it's implemented in node.js. It utilizes the `axios` and `commander` modules, among others.
+
+> `node get_plays.js all -u {bgg username} -s {start date yyyy-mm-dd} -e {end date yyyy-mm-dd} -lr`
+
+> `node get_plays.js new -u {bgg username} -s {start date yyyy-mm-dd} -e {end date yyyy-mm-dd} -lrci`
+
+> `node get_plays.js deep -u {bgg username} -s {start date yyyy-mm-dd} -e {end date yyyy-mm-dd} -t {minimum BGG rank} -lr`
+
+In this case, the date arguments MUST be in the `YYYY-MM-DD` format. I haven't been able to get realiably flexible behavior out of the `date-fns` package. However, the default arguments corresponding to the last 7 days are still available.
+
+Other minor changes:
+* There's a source file `labels.js` that maps BGG game IDs to alternate game titles.
+
 ## rust
 This subdirectory will contain `get_plays.rs`, an attempt to replicate the functionality of what we have in the **python-click** version in the rust language.
