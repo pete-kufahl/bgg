@@ -42,3 +42,6 @@ In this case, the date arguments MUST be in the `YYYY-MM-DD` format. I haven't b
 
 Other minor changes:
 * There's a source file `labels.js` that maps BGG game IDs to alternate game titles.
+
+## rust
+This subdirectory will contain `get_plays.rs`, an attempt to replicate the functionality of what we have in the **python-click** version in the rust language.
