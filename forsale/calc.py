@@ -1,5 +1,5 @@
 # calc
-import sys
+import matplotlib.pyplot as plt
 import random
 
 def initialize_properties(players: int = 4) -> list:
@@ -34,6 +34,38 @@ def initialize_checks(players: int = 4) -> list:
         ret = checks
     return ret
 
+def generate_sample(population, players):
+    """
+    returns three lists
+    1. a list of the largest value in every round
+    2. a list of the difference between largest and 2nd-largest value
+    3. a list of the average difference between each card and the next-lowest card
+    """
+    random.shuffle(population)
+    
+    # Split the shuffled population into rounds of the specified size
+    #   e.g., 4 cards for 4 players; 7 of these in a 28-card deck
+    rounds = [population[i:i+players] for i in range(0, len(population), players)]
+    
+    # Track the largest-numbered card and calculate the average difference within each hand
+    largest_cards = []
+    first_differences = []
+    average_differences = []
+    
+    for round in rounds:
+        sorted_round = sorted(round, reverse=True)
+        largest_cards.append(sorted_round[0])
+        first_differences.append(sorted_round[0] - sorted_round[1])
+        diff = 0
+        comps = len(sorted_round) - 1   # for a 4-card round, do 3 comparisons
+        for i in range(comps):
+            diff += abs(round[i] - round[i+1])
+        average_difference = diff / comps
+        average_differences.append(average_difference)
+    
+    return largest_cards, first_differences, average_differences
+
 if __name__ == "__main__":
-    properties = initialize_properties()
-    checks = initialize_checks()
+    properties = initialize_properties(players = 4)
+    checks = initialize_checks(players = 4)
+
