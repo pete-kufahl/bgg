@@ -1,7 +1,7 @@
-# bgg
+# bgg/get_plays
 scripts for using the boardgamegeek api
 
-## root directory
+## python
 This houses the primary python script for fetching and formatting game titles and plays for a BGG user. It's built using python 3.10, but the only special dependency it requires so far is the `requests` library.
 
 > `python getplays.py {start date} {end date} {bgg username}`
